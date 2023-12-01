@@ -1,0 +1,77 @@
+rm(list = ls())
+gc()
+
+library(factoextra)
+library(caret)
+library(ggplot2)
+library(GGally)
+
+df <- read.csv(file.choose(), header = TRUE)
+summary(df)
+
+## chose columns for k-means
+d <- df[, c("NumberOfAdult", "NumberOfChildren", "NumberOfBabies", "AverageDailyRate", "BookingParking", "StaysDate")] ## chose columns for k-means
+
+
+## consider normalizing scale of data
+d_norm <- apply(d,2,function(x) {(x - mean(x))/sd(x)})
+head(d_norm,10)
+
+d_clust <- d_norm
+
+
+
+nClust <- 4 # set number of clusters
+set.seed(123456)   # set random number seed before doing cluster analysis
+km <- kmeans(d_clust,nClust,iter.max = 100, nstart=20) # perform k-means analysis
+
+
+## look at centers of clusters
+(ctrs <- as.data.frame(km$centers)) # standarded mean for each variables, for each cluster group.
+ctrs$size <- km$size/sum(km$size) # add fraction for each group.*** 
+ctrs$segment <- 1:nrow(ctrs) # add marks for each group.
+ctrs[order(-ctrs$size), ] # show the final group form table.
+
+
+## tranform centers back to original units
+ctrs_rescaled <- matrix(data = NA, nrow = nClust, ncol = ncol(km$centers))
+for (i in 1:ncol(km$centers)){
+    ctrs_rescaled[ ,i] <- km$centers[, i] * sd(d[, i]) + mean(d[, i])
+}
+colnames(ctrs_rescaled) <- colnames(km$centers)
+ctrs_rescaled # rescaled mean for each variables and groups.
+
+
+## add cluster membership to original university data
+head(km$cluster)
+df$cluster <- km$cluster
+df[c(267, 42,140 ),]
+
+
+##pie chart with cluster percentages
+percsize <- paste(1:ncol(km$centers)," = ",format(km$size/sum(km$size)*100,digits=2),"%",sep="")
+pie(km$size,labels=percsize,col=1:ncol(km$centers)) # pie chart.
+
+##plot that indicates cluster definitions against principal components
+## we will cover principal components later in GBA 424
+fviz_cluster(km, geom = "point", data = d_clust) + ggtitle(paste("k =",nClust)) # balabala chart*
+
+
+##barplot of the cluster means
+par(mar=c(11,4,4,4))
+axis <- range(km$centers) + (range(km$centers)[2] - range(km$centers)[1]) * c(-.1,.1)
+bm <- barplot(km$centers,col=1:nClust,beside=TRUE,las=2,main="Cluster Means",ylim = axis) # bar chart.
+text(bm,km$centers + .05*ifelse(km$centers>0,1,-1),formatC(km$centers,format="f",digits=2))
+
+
+
+
+## 手动试试不同类别个数吧，这两行run不出来。。。
+##choosing the number of clusters
+## WSS plot - look for "elbow" in curve
+fviz_nbclust(d_clust,kmeans,method="wss",iter.max=100,nstart=20,k.max=15)
+
+## Avg silhouette width - find max
+fviz_nbclust(d_clust,kmeans,method="silhouette",iter.max=100,nstart=20,k.max=15) 
+
+
