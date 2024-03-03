@@ -1,0 +1,41 @@
+library(readr)
+hotels <- read_csv("Desktop/御湾project/R2_final_hotels.csv")
+library(dplyr)
+hotels <- hotels %>%
+    mutate(ArrivalDate = as.Date(ArrivalDate),
+           ReservationStatusDate = as.Date(ReservationStatusDate),
+           DaysBeforeCancellation = as.numeric(ArrivalDate - ReservationStatusDate))
+#Calculate Revenue Gained from Hotel Stays
+
+library(readxl)
+festival <- read_excel("Desktop/work/Festival.xlsx")
+
+# Convert dates to Date type if they're not already
+festival$StartDate <- as.Date(festival$Start)  # Ensure this matches your actual column name
+festival$EndDate <- as.Date(festival$End)      # Ensure this matches your actual column name
+hotels$ArrivalDate <- as.Date(hotels$ArrivalDate)
+
+# Let's inspect the festival to understand its structure
+print(head(festival))
+
+# Initialize the column with zeros
+hotels$DuringFestival <- 0
+
+# For each row in hotels, check if ArrivalDate falls within any festival range
+for(i in 1:nrow(hotels)) {
+    for(j in 1:nrow(festival)) {
+        if(hotels$ArrivalDate[i] >= festival$StartDate[j] & hotels$ArrivalDate[i] <= festival$EndDate[j]) {
+            hotels$DuringFestival[i] <- 1
+            break # Exit the loop once a match is found
+        }
+    }
+}
+
+# Inspect the updated hotels dataframe
+print(head(hotels))
+
+# Assuming 'hotels' dataframe is already loaded and contains the necessary columns
+hotels <- hotels %>%
+    mutate(TotalStayLength = StaysInWeekendNights + StaysInWeekNights,
+           RevenueGained = TotalStayLength * AverageDailyRate)
+
